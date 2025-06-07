@@ -158,56 +158,88 @@
         </div>
     </div>
 
-    <script>
-        
-        document.addEventListener('DOMContentLoaded', function () {
-        const firebaseConfig = {
-            apiKey: "AIzaSyBVVE4aKtFocBsIwpwlkR8PymB0qZFzEtE",
-            authDomain: "esp32proj-b2370.firebaseapp.com",
-            databaseURL: "https://esp32proj-b2370-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "esp32proj-b2370",
-            storageBucket: "esp32proj-b2370.appspot.com",
-            messagingSenderId: "600071239391",
-            appId: "1:600071239391:web:fc878248009cef04375b6a",
-            measurementId: "G-7WPC7Q5E6K"
-        };
+   <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjbZciTDKLhTWE2r3N0mlzQU6WBbQoHJg",
+      authDomain: "vending-smart.firebaseapp.com",
+      databaseURL: "https://vending-smart-default-rtdb.firebaseio.com",
+      projectId: "vending-smart",
+      storageBucket: "vending-smart.appspot.com",
+      messagingSenderId: "829062036961",
+      appId: "1:829062036961:web:f8c5e99861f345162dc377",
+      measurementId: "G-D7EKHDK0S6"
+    };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+    firebase.initializeApp(firebaseConfig);
 
-        // Listen for auth state change
-        auth.onAuthStateChanged(user => {
-            if (user) {
-            // User is signed in, fetch user data from Firestore
-            db.collection("users").doc(user.uid).get()
-                .then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const fullName = `${data.fname} ${data.mname} ${data.lname}`;
-                    document.getElementById("fullName").innerText = fullName;
-                } else {
-                    document.getElementById("fullName").innerText = "User data not found";
-                }
-                })
-                .catch(error => {
-                console.error("Error getting user data:", error);
-                document.getElementById("fullName").innerText = "Error loading user data";
-                });
-            } else {
-            // No user logged in, redirect to login page
-            window.location.href = "Admin.html";  // Or your login page name
-            }
-        });
+    const auth = firebase.auth();
+    const dbRT = firebase.database(); // ← added
+    const dashboardRef = dbRT.ref('dashboard'); // ← added
 
-        // Sidebar toggle
-        const sidebarToggle = document.querySelector("#sidebar-toggle");
-        sidebarToggle.addEventListener("click", function () {
-            document.querySelector("#sidebar").classList.toggle("collapsed");
-        });
-        });
-    </script>
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Real-time listener ← added
+    dashboardRef.on('value', snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      // Update dashboard elements ← added
+      document.getElementById('current-bottles').textContent = data.bottleCount;
+      document.getElementById('total-bottles').textContent = data.totalBottlesProcessed;
+      document.getElementById('rewards-remaining').textContent = data.rewardsRemaining;
+
+      const statusEl = document.getElementById('system-status');
+      statusEl.textContent = getStatusText(data.systemStatus);
+      statusEl.className = getStatusClass(data.systemStatus);
+
+      const bottlesForNext = data.totalBottlesProcessed % 3;
+      const progressPercent = (bottlesForNext / 3) * 100;
+      const progEl = document.getElementById('reward-progress');
+      progEl.style.width = progressPercent + '%';
+      document.getElementById('progress-text').textContent =
+        `${bottlesForNext}/3 bottles for next reward`;
+
+      document.getElementById('last-updated').textContent =
+        new Date(data.lastUpdated).toLocaleTimeString();
+    }, error => {
+      console.error('DB read failed:', error);
+    });
+
+    function getStatusText(status) {
+      switch (status) {
+        case 0: return 'Offline';
+        case 1: return 'Idle';
+        case 2: return 'Processing';
+        case 3: return 'Reward Dispensed';
+        case 4: return 'Out of Rewards';
+        default: return 'Unknown';
+      }
+    }
+
+    function getStatusClass(status) {
+      switch (status) {
+        case 0: return 'text-red-500';
+        case 1: return 'text-green-500';
+        case 2: return 'text-blue-500';
+        case 3: return 'text-yellow-500';
+        case 4: return 'text-gray-500';
+        default: return 'text-black';
+      }
+    }
+
+    // Sidebar toggle
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('aside');
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('hidden');
+    });
+  });
+</script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
